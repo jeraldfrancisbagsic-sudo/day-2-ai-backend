@@ -13,128 +13,247 @@ Follow each step by copying the prompt to your AI assistant. Each step builds on
 
 **Prompt for AI:**
 ```
-Generate a basic FastAPI project for a simple inventory system.
-- Use an app/ folder as the root directory for all project code.
-- Include folders for routers, services, schemas, database, and tests.
-- Include a main.py file.
-- Show the resulting folder structure.
-- Include simple instructions for setting up a virtual environment, installing dependencies, running the server, and opening API docs.
+Create a FastAPI project for an inventory system.
+- Use app/ as the root folder with subfolders: routers, services, schemas, db, tests.
+- Add __init__.py to app/ and all subfolders.
+- Add conftest.py at project root to add the directory to sys.path.
+- Include main.py with a basic FastAPI app.
+- Show folder structure and setup instructions (venv, install, run server, open docs).
 ```
 
-**Expected Folder Structure:**
+**Expected Output:**
 ```
+conftest.py
 app/
+├── __init__.py
 ├── main.py
 ├── routers/
+│   └── __init__.py
 ├── services/
+│   └── __init__.py
 ├── schemas/
+│   └── __init__.py
 ├── db/
+│   └── __init__.py
 └── tests/
+    └── __init__.py
 ```
 
 ---
 
-## Step 0.5 — Environment Variables
+## Step 1 — Environment Variables
 
 **Prompt for AI:**
 ```
-Create a file named `.env` at the root of the project with the following content:
+Create a .env file at project root with:
+- SUPABASE_DB_URL (PostgreSQL connection pooler URL, port 6543)
+- SUPABASE_API_KEY
 
-SUPABASE_DB_URL=postgresql://postgres:letsgosupabase@db.mmgyxxmrpynjpqnkjdpx.supabase.co:5432/postgres
-SUPABASE_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3l4eG1ycHluanBxbmtqZHB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwOTgwODIsImV4cCI6MjA4MzY3NDA4Mn0.YEFa3q2BkhKK1UnqwjQaq2-0KusuFMTDs2ntzZg3eYg
+Include instructions to get the URL from Supabase Dashboard.
+```
 
-Save the file and make sure python-dotenv is installed to load these variables in Python.
+**Expected Output:**
+```
+.env
+```
+```env
+SUPABASE_DB_URL=postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+SUPABASE_API_KEY=your-anon-key-here
 ```
 
 ---
 
-## Step 1 — Models/Schemas
+## Step 2 — Pydantic Schemas
 
 **Prompt for AI:**
 ```
-Create models and schemas for inventory items.
-- Include fields for id, name, quantity, and price.
-- Use schemas for request/response validation.
-- Include create, update, and read models.
-- Keep it simple and easy to understand.
+Create Pydantic schemas for:
+- categories: id (UUID), name (unique), description (optional)
+- products: id (UUID), name, sku (unique), description, price, current_stock, category_id, created_at
+- stock_movements: id (UUID), product_id, quantity, type (restock/sale/return/adjustment), created_at
+
+Include Base, Create, Update, and Response schemas with validation.
+```
+
+**Expected Output:**
+```
+app/schemas/
+├── category.py
+├── product.py
+└── stock_movement.py
 ```
 
 ---
 
-## Step 2 — Database & Supabase Connection
+## Step 3 — Database Connection
 
 **Prompt for AI:**
 ```
-Set up database connection to Supabase using SQLAlchemy.
-- Load database URL from .env.
-- Create a session and a base class for models.
-- Create an Item model with fields matching the schemas.
-- Include instructions to create tables and test database session.
+Set up SQLAlchemy database connection.
+- Load SUPABASE_DB_URL from .env.
+- Create session factory and Base class.
+- Create models for categories, products, stock_movements matching existing tables.
+- Use extend_existing=True. Do NOT create tables.
+- Fallback to SQLite if connection fails.
+```
+
+**Expected Output:**
+```
+app/db/
+└── database.py
 ```
 
 ---
 
-## Step 3 — Service Layer
+## Step 4 — Service Layer
 
 **Prompt for AI:**
 ```
-Create a service layer to handle business logic for inventory items.
-- Include CRUD operations: create, read, update, delete.
-- Connect to the database session.
-- Return the schemas for responses.
-- Handle item not found errors.
+Create services for:
+- CategoryService: CRUD, get products in category
+- ProductService: CRUD, search by name/SKU
+- StockMovementService: create movements, auto-update product stock, get history
+
+Handle errors with HTTP exceptions. Use transactions for stock updates.
+```
+
+**Expected Output:**
+```
+app/services/
+├── category_service.py
+├── product_service.py
+└── stock_movement_service.py
 ```
 
 ---
 
-## Step 4 — Routers
+## Step 5 — API Routers
 
 **Prompt for AI:**
 ```
-Create API endpoints for inventory items using FastAPI.
-- Include endpoints for all CRUD operations.
-- Use request/response schemas.
-- Connect to the service layer and database session.
-- Keep the routes simple and easy to understand.
+Create routers for:
+- /api/categories: GET, POST, PUT, DELETE
+- /api/products: GET (with category filter), POST, PUT, DELETE
+- /api/stock-movements: GET (with product filter), POST
+
+Use schemas and connect to services.
+```
+
+**Expected Output:**
+```
+app/routers/
+├── category_router.py
+├── product_router.py
+└── stock_movement_router.py
 ```
 
 ---
 
-## Step 5 — Include Router in main.py
+## Step 6 — Update main.py
 
 **Prompt for AI:**
 ```
-Update main.py to include FastAPI app and the inventory router.
-- Set API metadata (title, description, version).
-- Include the router with a prefix like /api.
+Update main.py to:
+- Set title "Inventory Management API", version "1.0.0"
+- Include all routers with /api prefix
+- Add root and health check endpoints
+- Do NOT call create_all()
+```
+
+**Expected Output:**
+```
+app/main.py (updated)
 ```
 
 ---
 
-## Step 6 — Pytest Test Cases
+## Step 7 — Test Cases
 
 **Prompt for AI:**
 ```
-Generate test cases for inventory CRUD operations using FastAPI TestClient.
+Create pytest tests for all endpoints.
+- Test CRUD for categories, products, stock-movements.
+- Test stock updates on movements.
+- Test invalid and not-found cases.
+- Use .env or fallback to SQLite.
+```
 
-Requirements:
-1. Test create, read, update, delete operations.
-2. Test valid, invalid, and not-found cases.
-3. Load database URL from .env using python-dotenv.
-4. If .env is missing or connection fails, use SQLite in-memory database for tests.
-5. Make tests runnable with Python: python -m pytest -q
-6. Keep tests simple, clear, and easy to understand for students.
+**Expected Output:**
+```
+app/tests/
+└── test_inventory.py
 ```
 
 ---
 
-## Step 7 — Requirements + README
+## Step 8 — Requirements + README
 
 **Prompt for AI:**
 ```
-Generate requirements.txt and README.md.
-- requirements.txt should include FastAPI, Uvicorn, SQLAlchemy, Pydantic, psycopg2-binary, python-dotenv, pytest.
-- README.md should include setup instructions, .env creation, running server, Swagger docs URL, running tests.
+Create requirements.txt with: fastapi[standard], uvicorn[standard], sqlalchemy, pydantic, psycopg2-binary, python-dotenv, pytest, httpx.
+
+Create README.md with setup instructions, .env setup, run commands, and API summary.
+```
+
+**Expected Output:**
+```
+requirements.txt
+README.md
+```
+
+---
+
+## Step 9 — Run the Project
+
+```powershell
+py -m venv venv
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\venv\Scripts\activate
+pip install -r requirements.txt
+fastapi dev app/main.py
+```
+
+Open: **http://127.0.0.1:8000/docs**
+
+Run tests:
+```powershell
+pytest -v
+```
+
+---
+
+## Final Project Structure
+
+```
+day-2-ai-backend/
+├── .env
+├── conftest.py
+├── requirements.txt
+├── README.md
+└── app/
+    ├── __init__.py
+    ├── main.py
+    ├── routers/
+    │   ├── __init__.py
+    │   ├── category_router.py
+    │   ├── product_router.py
+    │   └── stock_movement_router.py
+    ├── services/
+    │   ├── __init__.py
+    │   ├── category_service.py
+    │   ├── product_service.py
+    │   └── stock_movement_service.py
+    ├── schemas/
+    │   ├── __init__.py
+    │   ├── category.py
+    │   ├── product.py
+    │   └── stock_movement.py
+    ├── db/
+    │   ├── __init__.py
+    │   └── database.py
+    └── tests/
+        ├── __init__.py
+        └── test_inventory.py
 ```
 
 ---
@@ -142,10 +261,8 @@ Generate requirements.txt and README.md.
 ## Deliverable
 
 A working FastAPI inventory API with:
-- CRUD endpoints
-- Supabase database connection
-- Pydantic schemas
-- Pytest test cases
-- Complete documentation
-
-**Swagger Docs:** `http://127.0.0.1:8000/docs`
+- Categories, Products, Stock Movements
+- Supabase PostgreSQL connection
+- Automatic stock updates
+- Pytest tests
+- Swagger docs at http://127.0.0.1:8000/docs
